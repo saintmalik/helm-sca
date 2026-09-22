@@ -1,0 +1,16 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: demo-flux
+  namespace: default
+spec:
+  interval: 10m
+  releaseName: demo-flux
+  chart:
+    spec:
+      chart: ./testdata/charts/demo
+      sourceRef:
+        kind: GitRepository
+        name: ops
+  values:
+    replicaCount: 1

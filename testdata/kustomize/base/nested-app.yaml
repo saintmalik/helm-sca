@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nested-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/example/ops.git
+    path: testdata/charts/demo
+    targetRevision: HEAD
+    helm:
+      releaseName: nested-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nested

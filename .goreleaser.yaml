@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: helm-sca
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: helm-sca
+    main: ./cmd/helm-sca
+    binary: helm-sca
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/saintmalik/helm-sca/internal/version.Version={{.Version}}
+      - -X github.com/saintmalik/helm-sca/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/saintmalik/helm-sca/internal/version.Date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    # Matches helm-sca-action: helm-sca_${OS}_${ARCH}.tar.gz (linux/darwin, amd64/arm64)
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+release:
+  github:
+    owner: saintmalik
+    name: helm-sca
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"
