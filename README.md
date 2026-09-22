@@ -40,15 +40,6 @@ Formats: `list` (default), `json`, `yaml`, `cyclonedx-json`
 
 Workflow examples live in the [action repo](https://github.com/saintmalik/helm-sca-action/tree/main/examples).
 
-## Release
-
-Tag-driven via GoReleaser. First release:
-
-```bash
-git tag v0.0.1
-git push origin v0.0.1
-```
-
 ## License
 
 MIT
