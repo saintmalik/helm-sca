@@ -88,6 +88,10 @@ func Run(ctx context.Context, w io.Writer, opts Options) error {
 	if opts.HelmBin == "" {
 		opts.HelmBin = "helm"
 	}
+	// Track whether callers injected mocks before applying defaults so unit tests
+	// do not require syft/grype/helm on PATH.
+	needScoreTools := opts.ScoreImages == nil
+	needHelm := opts.ListVersions == nil || opts.TemplatePin == nil
 	if opts.ListVersions == nil {
 		opts.ListVersions = listNewerVersions
 	}
@@ -115,10 +119,12 @@ func Run(ctx context.Context, w io.Writer, opts Options) error {
 		fmt.Fprintf(os.Stderr, "warning: capped to --max-apps=%d pins\n", opts.MaxApps)
 	}
 
-	if !opts.SkipScore {
+	if !opts.SkipScore && needScoreTools {
 		if err := scan.RequireTools(); err != nil {
 			return err
 		}
+	}
+	if needHelm {
 		if _, err := exec.LookPath(opts.HelmBin); err != nil {
 			return fmt.Errorf("%s not found on PATH (required for recommend)", opts.HelmBin)
 		}
