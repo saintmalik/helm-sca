@@ -26,10 +26,12 @@ var (
 	repoRoot      string
 	outDir        string
 	failOn        string
-	onlyFixed     bool
-	maxApps       int
-	skipStatic    bool
-	skipRegex     bool
+	onlyFixed      bool
+	maxApps        int
+	candidates     int
+	recommendFormat string
+	skipStatic     bool
+	skipRegex      bool
 )
 
 // Execute runs the root command.
@@ -69,7 +71,6 @@ func inventoryFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&release, "release", "helm-sca", "helm template release name (chart mode)")
 	cmd.Flags().StringArrayVarP(&values, "values", "f", nil, "Helm values file (repeatable)")
 	cmd.Flags().StringArrayVar(&setVals, "set", nil, "Helm --set key=value (repeatable)")
-	cmd.Flags().StringVar(&format, "format", "list", "output format: list|json|yaml|cyclonedx-json")
 	cmd.Flags().BoolVar(&skipStatic, "skip-static", false, "skip static-YAML fallback detectors")
 	cmd.Flags().BoolVar(&skipRegex, "skip-regex", false, "skip regex fallback detectors")
 }
@@ -108,6 +109,7 @@ func inventoryCmd() *cobra.Command {
 		},
 	}
 	inventoryFlags(cmd)
+	cmd.Flags().StringVar(&format, "format", "list", "output format: list|json|yaml|cyclonedx-json")
 	return cmd
 }
 
@@ -140,19 +142,32 @@ func scanCmd() *cobra.Command {
 func recommendCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "recommend",
-		Short: "Recommend chart/release pin bumps (stub in v1)",
+		Short: "Recommend chart pin bumps when a newer version improves Grype High/Critical",
+		Long: `Discover Helm chart pins (Argo targetRevision, Flux chart version, Terraform
+helm_release, etc.), resolve newer chart versions via helm, re-template current
+vs candidate, score images with Syft→Grype (--only-fixed), and recommend a bump
+only when fixable High/Critical counts improve.
+
+Limits: needs helm (and registry/repo auth for private charts); version discovery
+is best-effort (helm search repo / helm show chart). Local charts and plain
+manifests have no remote pin to bump.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return recommend.Run(cmd.OutOrStdout(), recommend.Options{
-				ArgoApps: argoApps,
-				OutDir:   outDir,
-				MaxApps:  maxApps,
+			return recommend.Run(cmd.Context(), cmd.OutOrStdout(), recommend.Options{
+				Inventory:  invOptions(),
+				OutDir:     outDir,
+				MaxApps:    maxApps,
+				Candidates: candidates,
+				OnlyFixed:  onlyFixed,
+				Format:     recommendFormat,
 			})
 		},
 	}
-	cmd.Flags().StringVar(&argoApps, "argo-apps", "", "Argo Application YAML file or directory")
-	cmd.Flags().StringVar(&flux, "flux", "", "Flux resources (reserved for future recommend)")
-	cmd.Flags().StringVar(&outDir, "out-dir", "helm-sca-out", "output directory for future recommendation artifacts")
-	cmd.Flags().IntVar(&maxApps, "max-apps", 12, "cap apps to re-score (reserved)")
+	inventoryFlags(cmd)
+	cmd.Flags().StringVar(&outDir, "out-dir", "helm-sca-out", "directory for recommendation artifacts")
+	cmd.Flags().IntVar(&maxApps, "max-apps", 12, "cap number of chart pins to evaluate")
+	cmd.Flags().IntVar(&candidates, "candidates", 1, "number of newer chart versions to try (newest first)")
+	cmd.Flags().BoolVar(&onlyFixed, "only-fixed", true, "pass --only-fixed to Grype when scoring")
+	cmd.Flags().StringVar(&recommendFormat, "output", "both", "stdout format: markdown|json|both (always writes files under out-dir)")
 	return cmd
 }
 
